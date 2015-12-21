@@ -1,0 +1,72 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function extend_site_information_menu() {
+  $items = array();
+  $items["page_json/%/%"] = array(
+    'title' => 'Site Information',
+    'page callback' => '_extend_site_information_get_json',
+    'page arguments' => array(1, 2),
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+/**
+ * Callback function to get JSON object of a node.
+ */
+function _extend_site_information_get_json($apikey, $node_id) {
+  $sitekey = variable_get('siteapikey', 'No API Key yet'); 
+  $is_key_correct = ($sitekey == $apikey) ? TRUE : FALSE;
+  if (!$is_key_correct) {
+	 drupal_access_denied();
+	 drupal_exit();
+  }
+
+  $nid = ($node_id > 0) ? $node_id : NULL;
+  if (is_null($nid)) {
+    $data = _extend_site_information_set_error();
+  }
+  else {
+    $data = node_load($nid);
+    $is_type_page = ($data->type == 'page') ? TRUE : FALSE ;
+    if (!$is_type_page) {
+      $data = _extend_site_information_set_error();
+    }
+  }
+  drupal_json_output($data);
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function extend_site_information_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'system_site_information_settings') {
+    $form['site_information']['siteapikey'] = array(
+      '#title' => t('Site API Key'),
+      '#type' => 'textfield',
+      '#default_value' => variable_get('siteapikey', 'No API Key yet'),
+    );
+    $form['actions']['submit']['#value'] = 'Update Configuration';
+  }
+  $form['#submit'][] = '_extend_site_information_submit_handler';
+}
+
+/**
+ * Submit handler of extend_site_information_form_alter().
+ */
+function _extend_site_information_submit_handler($form, &$form_state) {
+  $siteapikey = $form_state['values']['siteapikey'];
+  drupal_set_message(t('The Site API Key value' . ' ' . $siteapikey . ' ' . 'have been saved!'));
+}
+
+/**
+ * Helper function to set error.
+ */
+function _extend_site_information_set_error() {
+  return array(
+    'Error' => 'Please check the parameters.'
+  );
+}
